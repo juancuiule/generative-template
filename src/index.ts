@@ -23,13 +23,75 @@ function fxRandom(min?: number | any[], max?: number) {
   }
 }
 
+type Circle = {
+  x: number;
+  y: number;
+  r: number;
+};
+
 const sketch = (p5: P5) => {
   let width = window.innerWidth;
   let height = window.innerHeight;
 
+  const joinCircles = (originCircle: Circle, r: number, angle: number) => {
+    const x = originCircle.x + (originCircle.r + r) * p5.cos(angle);
+    const y = originCircle.y + (originCircle.r + r) * p5.sin(angle);
+    return { x, y, r };
+  };
+
+  const r1 = fxRandom(75, 200);
+
   const setRandomValues = () => {};
 
-  const drawComposition = () => {};
+  const cs = Array.from({ length: 2 }, (_, i) => {
+    const a = fxRandom(0, p5.TAU);
+    const r = fxRandom(50, 75);
+    return { a, r };
+  });
+
+  const drawComposition = () => {
+    p5.push();
+    p5.translate(width / 2, height / 2);
+    p5.background("#fafafa");
+    p5.stroke("#1d1d1d");
+    p5.noFill();
+    // p5.noLoop();
+
+    const circles = cs.reduce((acc, c, i) => {
+      const prevCircle = i === 0 ? { x: 0, y: 0, r: r1 } : acc[i - 1];
+      const circle = joinCircles(prevCircle, c.r, c.a);
+      return [...acc, circle];
+    }, [] as Circle[]);
+
+    [{ x: 0, y: 0, r: r1 }, ...circles].forEach((c, i, l) => {
+      p5.push();
+      p5.circle(c.x, c.y, c.r * 2);
+      p5.noStroke();
+      p5.fill("#1d1d1d");
+      p5.text(i, c.x - 4, c.y + 4);
+      p5.pop();
+      if (i !== l.length - 1) {
+        p5.push();
+        p5.stroke("#c9c9c9");
+        p5.line(c.x, c.y, l[i + 1].x, l[i + 1].y);
+        p5.circle(c.x, c.y, (c.r + l[i + 1].r) * 2);
+        p5.pop();
+      }
+      if (i === l.length - 1) {
+        p5.push();
+
+        const a = p5.atan(l[i - 1].r / (c.r * 2));
+        const x = c.x + c.r * 2 * p5.cos(a);
+        const y = c.y + c.r * 2 * p5.sin(a);
+        p5.stroke("#ff0000");
+        p5.line(c.x, c.y, x, y);
+
+        p5.circle(c.x, c.y, c.r * 4);
+        p5.pop();
+      }
+    });
+    p5.pop();
+  };
 
   let noiseImg: P5.Image;
 
