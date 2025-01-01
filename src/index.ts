@@ -62,6 +62,11 @@ const sketch = (p5: P5) => {
     p5.stroke("#c9c9c9");
     p5.line(x - r, y, x + r, y);
     p5.line(x, y - r, x, y + r);
+    // const a = p5.TAU / 8;
+    // p5.line(x, y, x + r * p5.cos(a), y + r * p5.sin(a));
+    // p5.line(x, y, x + r * p5.cos(a * 3), y + r * p5.sin(a * 3));
+    // p5.line(x, y, x + r * p5.cos(a * 5), y + r * p5.sin(a * 5));
+    // p5.line(x, y, x + r * p5.cos(a * 7), y + r * p5.sin(a * 7));
     p5.pop();
   };
 
@@ -108,78 +113,88 @@ const sketch = (p5: P5) => {
     p5.pop();
   };
 
-  const angleRange = (r0: number, r1: number) => {
-    const edgeAngle = p5.asin(r0 / (r0 + r1));
-    const aa = (p5.PI - 2 * edgeAngle) / 2;
-    return [aa, p5.PI - aa];
+  const angleRange = (c0: Circle, c1: Circle, r: number) => {
+    const directionAngle = p5.atan2(c0.y - c1.y, c0.x - c1.x);
+    const edgeAngle = p5.asin(c0.r / (c0.r + c1.r));
+    const arcRange = p5.TAU - edgeAngle * 2;
+
+    const ai = directionAngle + edgeAngle;
+    const af = ai + arcRange;
+    const a0 = p5.acos(c1.r / (c1.r + r));
+
+    return [ai + a0, af - a0];
+  };
+
+  const angleBetween = (cPrev: Circle, cCurr: Circle, cNext: Circle) => {
+    const _pa = p5.atan2(cPrev.y - cCurr.y, cPrev.x - cCurr.x);
+    const _na = p5.atan2(cNext.y - cCurr.y, cNext.x - cCurr.x);
+    const pa = _pa < 0 ? p5.TAU + _pa : _pa;
+    const na = _na < 0 ? p5.TAU + _na : _na;
+    return p5.abs(na - pa);
   };
 
   const drawComposition = () => {
     p5.push();
     p5.translate(width / 2, height / 2);
     p5.background("#fafafa");
-    p5.stroke("#c9c9c9")
+    p5.stroke("#c9c9c9");
     p5.line(-width / 2, 0, width / 2, 0);
     p5.line(0, -height / 2, 0, height / 2);
     p5.noFill();
     p5.noStroke();
     p5.noLoop();
 
-    // const circles = [50, 40].reduce((acc, r, i) => {
-    //   const prevCircle = i === 0 ? { x: 0, y: 0, r: r0 } : acc[i - 1];
-    //   const circle = joinCircles(prevCircle, r, p5.frameCount / 1 / r);
-    //   return [...acc, circle];
-    // }, [] as Circle[]);
+    const N = 5;
 
-    const rs = Array.from({ length: 8 }, (_, i) => fxRandom(10, 100));
-    const as = Array.from({ length: 8 }, (_, i) => {
-      if (i === 0) return 0;
-      const [min, max] = angleRange(rs[i - 1], rs[i]);
-      return fxRandom(min, max);
+    const rs = [100, 50, 40, 30, 20, 40, 100];
+    const a1 = fxRandom(0, p5.TAU);
+    const c0 = { x: 0, y: 0, r: rs[0] };
+    const c1 = joinCircles(c0, rs[1], a1);
+
+    const circles = [c0, c1];
+    let prev: Circle = c0;
+    let curr: Circle = c1;
+    for (let i = 0; i < rs.length - 2; i++) {
+      const [min, max] = angleRange(prev, curr, rs[i + 2]);
+      const a = fxRandom(min, max);
+      const c = joinCircles(curr, rs[i + 2], a);
+      circles.push(c);
+      prev = curr;
+      curr = c;
+    }
+
+    const [last] = circles.slice(-1);
+    const [first] = circles;
+
+    const dx = last.x - first.x;
+    const dy = last.y - first.y;
+    const distance = p5.sqrt(dx ** 2 + dy ** 2);
+
+    const x = first.x + dx / 2;
+    const y = first.y + dy / 2;
+    const r = (distance - last.r - first.r) / 2;
+    circles.push({ x, y, r });
+    
+    circles.forEach((circle, i, l) => {
+      drawCircle(circle);
+      if (i < l.length - 1) {
+        drawConnection(circle, l[i + 1]);
+      }
+      if (i === l.length - 1) {
+        drawConnection(circle, l[0]);
+      }
     });
 
-    const circles: Circle[] = rs.reduce((acc: Circle[], r, i) => {
-      const prevCircle = i === 0 ? { x: -r*2, y: -height/2 + r + 20, r } : acc[i - 1];
-      const circle = joinCircles(prevCircle, r, as[i]);
-      return [...acc, circle];
-    }, [] as Circle[]);
+    
 
-    circles.forEach((c, i, l) => {
-      drawCircle(c)
-      if (i === 0) return;
-      const c0 = l[i - 1];
-      const c1 = l[i];
-      drawOrbit(c0, c1);
-      drawConnection(c0, c1, "#ff0000");
-    });
-
-    // const c0 = { x: 0, y: -height / 2 + r0 + 20, r: r0 };
-    // const a1 = angleRange(r0, 50);
-
-    // const c1 = joinCircles(c0, 50, p5.random(a1[0], a1[1]));
-
-    // const a2 = angleRange(50, 40);
-    // const c2 = joinCircles(c1, 40, p5.random(a2[0], a2[1]));
-
-    // drawCircle(c0);
-    // drawCircle(c1);
-    // drawCircle(c2);
-
-    // drawConnection(c0, c1, "#ff0000");
-    // drawConnection(c1, c2, "#ff0000");
-    // [{ x: 0, y: 0, r: r1 }, ...circles].forEach((c, i, l) => {
-    //   if (i === l.length - 1) return;
-    //   const c0 = l[i];
-    //   const c1 = l[i + 1];
-    //   p5.push();
-    //   drawCircle(c0);
-    //   drawCircle(c1);
-    //   drawOrbit(c0, c1);
-    //   drawConnection(c0, c1, "#ff0000");
-    //   drawConnection(c1, c0, "#0000ff");
-    //   p5.pop();
+    // circles.forEach((circle, i, l) => {
+    //   if (i !== 0 && i <= l.length - 2) {
+    //     const prev = l[i - 1];
+    //     const next = l[i + 1];
+    //     const angle = angleBetween(prev, circle, next);
+    //     console.log((angle / p5.TAU) * 360);
+    //   }
     // });
-    // p5.pop();
   };
 
   p5.setup = () => {
